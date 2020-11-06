@@ -1,6 +1,7 @@
 window.onload=function(){
         var canvas=document.getElementById("mycanvas");
         var ctx=canvas.getContext("2d");
+        ctx.save();
         var boundingClientRect=canvas.getBoundingClientRect();
         var offsetX=boundingClientRect.left;
         var offsetY=boundingClientRect.top;
@@ -13,29 +14,25 @@ window.onload=function(){
         var dragTL,dragBL,dragTR,dragBR;
         dragTL=dragBL=dragTR=dragBR=false;
         var selectedRect=-1;
-
+        var currentAngle=0;
         // an array of objects that define different rectangles
         var rects=[];
-        rects.push({x:50,y:50,width:50,height:50,fill:"#444444",isDragging:false});
-        rects.push({x:150,y:50,width:50,height:50,fill:"#ff550d",isDragging:false});
-        rects.push({x:250,y:50,width:50,height:50,fill:"#800080",isDragging:false});
-        rects.push({x:350,y:50,width:50,height:50,fill:"#0c64e8",isDragging:false});
+        rects.push({x:70,y:150,width:80,height:80,fill:"#444444",isDragging:false,isRotateable:false});
+        rects.push({x:250,y:150,width:80,height:80,fill:"#ff550d",isDragging:false,isRotateable:false});
+        rects.push({x:450,y:150,width:80,height:80,fill:"#800080",isDragging:false,isRotateable:false});
+        rects.push({x:650,y:150,width:80,height:80,fill:"#0c64e8",isDragging:false,isRotateable:false});
 
         // listen for mouse events
         canvas.onmousedown = handleMouseDown;
         canvas.onmouseup = handleMouseUp;
         canvas.onmousemove = handleMouseMove;
 
-        //draw the scene
         draw();
-
         // draw shape
-        function shape(x,y,w,h) 
+        function shape(x,y,w,h,fillStyle) 
         {
-            ctx.beginPath();
-            ctx.rect(x,y,w,h);
-            ctx.closePath();
-            ctx.fill();
+            ctx.fillStyle=fillStyle;
+            ctx.fillRect(x,y,w,h);
         }
 
         // clear the canvas
@@ -52,11 +49,9 @@ window.onload=function(){
             shape(0,0,WIDTH,HEIGHT);
             for(var i=0;i<rects.length;i++){
                 var r=rects[i];
-                ctx.fillStyle=r.fill;
-                shape(r.x,r.y,r.width,r.height);
+                shape(r.x,r.y,r.width,r.height,r.fill);
             }
         }
-
         // handle mousedown events
         function handleMouseDown(e)
         {
@@ -68,13 +63,21 @@ window.onload=function(){
             for(var i=0;i<rects.length;i++)
             {
                   var rect=rects[i];
-                  if(mouseX>rect.x && mouseX<rect.x+rect.width && mouseY>rect.y && mouseY<rect.y+rect.height)
+                  if(mouseX>rect.x && mouseX<rect.x+rect.width && mouseY>rect.y && mouseY<rect.y+rect.height&&mouseX!=rect.width/2&&mouseY!=rect.height/2)
                   {
                       // if mouse click is inside rectangle
                       dragOk=true;
                       rect.isDragging=true;
                       selectedRect=i;
                       this.style.cursor='grab';
+                  }
+                  if(checkCloseEnough(mouseX, rect.x+rect.width/2)&&checkCloseEnough(mouseY, rect.y+rect.height/2) )
+                  {
+                      this.style.cursor='pointer';
+                      rect.isDragging=false;
+                      isResize=false;
+                      rect.isRotateable=true;
+                      selectedRect=i;
                   }
                   //top left
                   if( checkCloseEnough(mouseX, rect.x) && checkCloseEnough(mouseY, rect.y) )
@@ -83,6 +86,7 @@ window.onload=function(){
                       isResize=true;
                       dragTL = true;
                       rect.isDragging=false;
+                      rect.isRotateable=false;
                       selectedRect=i;
                   }
                   //top right
@@ -92,6 +96,7 @@ window.onload=function(){
                       isResize=true;
                       dragTR = true;
                       rect.isDragging=false;
+                      rect.isRotateable=false;
                       selectedRect=i;
                   }
                   //bottom left
@@ -101,6 +106,7 @@ window.onload=function(){
                       isResize=true;
                       dragBL = true;
                       rect.isDragging=false;
+                      rect.isRotateable=false;
                       selectedRect=i;
                   }
                   //bottom right
@@ -110,6 +116,7 @@ window.onload=function(){
                       isResize=true;
                       dragBR = true;
                       rect.isDragging=false;
+                      rect.isRotateable=false;
                       selectedRect=i;
                   }
                   clearCanvas();
@@ -118,8 +125,8 @@ window.onload=function(){
             // save the current mouse position
             startX=mouseX;
             startY=mouseY;
+            
         }
-
         function checkCloseEnough(p1, p2)
         {
             return Math.abs(p1-p2)<closeEnough;
@@ -133,6 +140,7 @@ window.onload=function(){
             for(var i=0;i<rects.length;i++)
             {
                 rects[i].isDragging=false;
+                rects[i].isRotateable=false;
             }
             dragTL = dragTR = dragBL = dragBR = false;
         }
@@ -151,13 +159,22 @@ window.onload=function(){
                   // since the last mousemove
                   var dx=mouseX-startX;
                   var dy=mouseY-startY;
-
                   var rect=rects[selectedRect];
                   if(rect.isDragging)
                   {
                       rect.x+=dx;
                       rect.y+=dy;
                       this.style.cursor='grab';
+                  }
+                  else if(rect.isRotateable)
+                  {
+                    this.style.cursor='pointer';
+                    clearCanvas();
+                    ctx.translate(rect.x+rect.width/2,rect.y+rect.height/2);
+                    ctx.rotate(Math.PI / 180 * (currentAngle += 5));  
+                    ctx.translate(-(rect.x+rect.width/2), -(rect.y+rect.height/2));
+                    ctx.rotate(Math.PI / 180 * (currentAngle -= 5));   
+                    shape(rect.x,rect.y,rect.width,rect.height,rect.fill);
                   }
                   else if(isResize)
                   {
